@@ -87,6 +87,22 @@ class MobileViTBlock(layers.Layer):
 
 
 @compact_get_layers
+class UpsamplingBlock(layers.Layer):
+    def __init__(self, conv_filters: int, **kwargs):
+        super().__init__(**kwargs)
+        self.conv_filters = conv_filters
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        x = self.get("up", layers.UpSampling2D, interpolation="bilinear")(x)
+        x = self.get("conv1", layers.Conv2D, filters=self.conv_filters, kernel_size=3, activation="relu", padding="same")(x)
+        x = self.get("norm1", layers.BatchNormalization)(x)
+        x = self.get("conv2", layers.Conv2D, filters=self.conv_filters, kernel_size=3, activation="relu", padding="same")(x)
+        x = self.get("norm2", layers.BatchNormalization)(x)
+
+        return x
+
+
+@compact_get_layers
 class CellCentroidFormer(models.Model):
     def __init__(self, input_shape: Tuple[int, int, int], projection_dims_neck: Tuple[int, int], conv_filters_heads: Tuple[int, int, int]):
         super().__init__()
