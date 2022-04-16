@@ -102,7 +102,6 @@ class UpsamplingBlock(layers.Layer):
         return x
 
 
-@compact_get_layers
 class CellCentroidFormer(models.Model):
     def __init__(self, input_shape: Tuple[int, int, int], projection_dims_neck: Tuple[int, int], conv_filters_heads: Tuple[int, int, int]):
         super().__init__()
@@ -113,47 +112,40 @@ class CellCentroidFormer(models.Model):
             inputs=backbone.input,
             outputs=backbone.get_layer("block6a_expand_activation").output
         )
-        self.projection_dims_neck = projection_dims_neck
-        self.conv_filters_heads = conv_filters_heads
+        self.neck = models.Sequential([
+            MobileViTBlock(num_transformer_blocks=2, projection_dim=projection_dims_neck[0], patch_size=4),
+            layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3, padding="same", activation="relu"),
+            layers.LayerNormalization(),
+            layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3, padding="same", activation="relu"),
+            layers.LayerNormalization(),
+            layers.UpSampling2D(interpolation="bilinear"),
+            MobileViTBlock(num_transformer_blocks=2, projection_dim=projection_dims_neck[1], patch_size=4),
+            layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3, padding="same", activation="relu"),
+            layers.LayerNormalization(),
+            layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3, padding="same", activation="relu"),
+            layers.LayerNormalization()
+        ], name="neck")
+        self.centroid_heatmap_head = models.Sequential([
+            UpsamplingBlock(conv_filters=conv_filters_heads[0]),
+            UpsamplingBlock(conv_filters=conv_filters_heads[1]),
+            UpsamplingBlock(conv_filters=conv_filters_heads[2]),
+            layers.Conv2D(filters=32, kernel_size=3, padding="same", activation="relu"),
+            layers.Conv2D(filters=1, kernel_size=3, padding="same", activation="sigmoid")
+        ], name="centroid_heatmap_head")
+        self.cell_dimensions_head = models.Sequential([
+            UpsamplingBlock(conv_filters=conv_filters_heads[0]),
+            UpsamplingBlock(conv_filters=conv_filters_heads[1]),
+            UpsamplingBlock(conv_filters=conv_filters_heads[2]),
+            layers.Conv2D(filters=32, kernel_size=3, padding="same", activation="relu"),
+            layers.Conv2D(filters=2, kernel_size=3, padding="same", activation="sigmoid")
+        ], name="cell_dimensions_head")
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         x = self.backbone(x)
-
-        # Neck:
-        x = self.get("mobilevit_block1", MobileViTBlock, num_transformer_blocks=2, projection_dim=self.projection_dims_neck[0], patch_size=4)(x)
-        x = self.get("conv1", layers.Conv2D, filters=self.projection_dims_neck[0], kernel_size=3, activation="relu", padding="same")(x)
-        x = self.get("norm1", layers.LayerNormalization)(x)
-        x = self.get("conv2", layers.Conv2D, filters=self.projection_dims_neck[0], kernel_size=3, activation="relu", padding="same")(x)
-        x = self.get("norm2", layers.LayerNormalization)(x)
-        x = self.get("mobilevit_block2", MobileViTBlock, num_transformer_blocks=2, projection_dim=self.projection_dims_neck[1], patch_size=4)(x)
-        x = self.get("conv3", layers.Conv2D, filters=self.projection_dims_neck[1] * 2, kernel_size=3, activation="relu", padding="same")(x)
-        x = self.get("norm3", layers.LayerNormalization)(x)
-        x = self.get("conv4", layers.Conv2D, filters=self.projection_dims_neck[1] * 2, kernel_size=3, activation="relu", padding="same")(x)
-        output_neck = self.get("norm4", layers.LayerNormalization)(x)
-
-        # Centroid heatmap head:
-        x = output_neck
-        for idx, num_filters in enumerate(self.conv_filters_heads):
-            x = self.get(f"hm_up{idx}", layers.UpSampling2D, interpolation="bilinear")(x)
-            x = self.get(f"hm_conv{idx}.1", layers.Conv2D, filters=num_filters, kernel_size=3, activation="relu", padding="same")(x)
-            x = self.get(f"hm_norm{idx}.1", layers.BatchNormalization)(x)
-            x = self.get(f"hm_conv{idx}.2", layers.Conv2D, filters=num_filters, kernel_size=3, activation="relu", padding="same")(x)
-            x = self.get(f"hm_norm{idx}.2", layers.BatchNormalization)(x)
-
-        x = self.get("hm_conv3", layers.Conv2D, filters=32, kernel_size=3, activation="relu", padding="same")(x)
-        centroid_heatmap = self.get("centroid_heatmap", layers.Conv2D, filters=1, kernel_size=3, activation="relu", padding="same")(x)
-
-        # Cell dimensions head:
-        x = output_neck
-        for idx, num_filters in enumerate(self.conv_filters_heads):
-            x = self.get(f"dim_up{idx}", layers.UpSampling2D, interpolation="bilinear")(x)
-            x = self.get(f"dim_conv{idx}.1", layers.Conv2D, filters=num_filters, kernel_size=3, activation="relu", padding="same")(x)
-            x = self.get(f"dim_norm{idx}.1", layers.BatchNormalization)(x)
-            x = self.get(f"dim_conv{idx}.2", layers.Conv2D, filters=num_filters, kernel_size=3, activation="relu", padding="same")(x)
-            x = self.get(f"dim_norm{idx}.2", layers.BatchNormalization)(x)
-
-        x = self.get("dim_conv3", layers.Conv2D, filters=32, kernel_size=3, activation="relu", padding="same")(x)
-        height_map = self.get("height_map", layers.Conv2D, filters=1, kernel_size=3, activation="sigmoid", padding="same")(x)
-        width_map = self.get("width_map", layers.Conv2D, filters=1, kernel_size=3, activation="sigmoid", padding="same")(x)
+        x = self.neck(x)
+        centroid_heatmap = self.centroid_heatmap_head(x)
+        cell_dimensions = self.cell_dimensions_head(x)
+        height_map = tf.expand_dims(cell_dimensions[..., 0], axis=-1)
+        width_map = tf.expand_dims(cell_dimensions[..., 1], axis=-1)
 
         return centroid_heatmap, height_map, width_map
