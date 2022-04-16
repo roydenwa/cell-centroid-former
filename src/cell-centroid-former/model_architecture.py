@@ -69,8 +69,8 @@ class MobileViTBlock(layers.Layer):
         self.patch_size = patch_size
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
-        local_features = self.get("conv1", layers.Conv2D, filters=self.projection_dim, kernel_size=3, activation=tf.nn.swish, padding="same")(x)
-        local_features = self.get("conv2", layers.Conv2D, filters=self.projection_dim, kernel_size=1, activation=tf.nn.swish, padding="same")(local_features)
+        local_features = self.get("conv1", layers.Conv2D, filters=self.projection_dim, kernel_size=3, padding="same", activation=tf.nn.swish)(x)
+        local_features = self.get("conv2", layers.Conv2D, filters=self.projection_dim, kernel_size=1, padding="same", activation=tf.nn.swish)(local_features)
 
         # Unfold local features into a sequence of patches for the transformer encoder:
         num_patches = int((local_features.shape[1] * local_features.shape[2]) / self.patch_size)
@@ -79,9 +79,9 @@ class MobileViTBlock(layers.Layer):
 
         # Fold global features again into a 3D representation to concat with the input tensor:
         global_features = self.get("fold", layers.Reshape, target_shape=(*local_features.shape[1:-1], self.projection_dim))(global_features)
-        global_features = self.get("conv3", layers.Conv2D, filters=x.shape[-1], kernel_size=1, activation=tf.nn.swish, padding="same")(global_features)
+        global_features = self.get("conv3", layers.Conv2D, filters=x.shape[-1], kernel_size=1, padding="same", activation=tf.nn.swish)(global_features)
         combined_features = self.get("concat", layers.Concatenate, axis=-1)([x, global_features])
-        combined_features = self.get("conv4", layers.Conv2D, filters=self.projection_dim, kernel_size=3, activation=tf.nn.swish, padding="same")(combined_features)
+        combined_features = self.get("conv4", layers.Conv2D, filters=self.projection_dim, kernel_size=3, padding="same", activation=tf.nn.swish)(combined_features)
 
         return combined_features
 
@@ -94,9 +94,9 @@ class UpsamplingBlock(layers.Layer):
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         x = self.get("up", layers.UpSampling2D, interpolation="bilinear")(x)
-        x = self.get("conv1", layers.Conv2D, filters=self.conv_filters, kernel_size=3, activation="relu", padding="same")(x)
+        x = self.get("conv1", layers.Conv2D, filters=self.conv_filters, kernel_size=3, padding="same", activation="relu")(x)
         x = self.get("norm1", layers.BatchNormalization)(x)
-        x = self.get("conv2", layers.Conv2D, filters=self.conv_filters, kernel_size=3, activation="relu", padding="same")(x)
+        x = self.get("conv2", layers.Conv2D, filters=self.conv_filters, kernel_size=3, padding="same", activation="relu")(x)
         x = self.get("norm2", layers.BatchNormalization)(x)
 
         return x
