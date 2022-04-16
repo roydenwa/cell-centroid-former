@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from tensorflow.keras import models, layers
 from tensorflow.keras.applications.efficientnet_v2 import EfficientNetV2S
-from typing import Tuple, Any, Callable
+from typing import Tuple, Any, Callable, Dict
 
 
 def compact_get_layers(module: tf.Module) -> tf.Module:
@@ -140,12 +140,14 @@ class CellCentroidFormer(models.Model):
             layers.Conv2D(filters=2, kernel_size=3, padding="same", activation="sigmoid")
         ], name="cell_dimensions_head")
 
-    def call(self, x: tf.Tensor) -> tf.Tensor:
+    def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
         x = self.backbone(x)
         x = self.neck(x)
         centroid_heatmap = self.centroid_heatmap_head(x)
         cell_dimensions = self.cell_dimensions_head(x)
-        height_map = tf.expand_dims(cell_dimensions[..., 0], axis=-1)
-        width_map = tf.expand_dims(cell_dimensions[..., 1], axis=-1)
 
-        return centroid_heatmap, height_map, width_map
+        return {
+            "centroid_heatmap": centroid_heatmap,
+            "height_map": tf.expand_dims(cell_dimensions[..., 0], axis=-1),
+            "width_map": tf.expand_dims(cell_dimensions[..., 1], axis=-1)
+        }
