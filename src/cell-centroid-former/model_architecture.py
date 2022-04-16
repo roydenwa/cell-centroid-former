@@ -42,16 +42,16 @@ class MultiLayerPerceptron(layers.Layer):
 
 @compact_get_layers
 class TransformerEncoder(layers.Layer):
-    def __init__(self, num_blocks: int, projection_dim: int, num_heads: int, **kwargs):
+    def __init__(self, blocks: int, projection_dim: int, attn_heads: int, **kwargs):
         super().__init__(**kwargs)
-        self.num_blocks = num_blocks
+        self.blocks = blocks
         self.projection_dim = projection_dim
-        self.num_heads = num_heads
+        self.attn_heads = attn_heads
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
-        for idx in range(self.num_blocks):
+        for idx in range(self.blocks):
             x1 = self.get(f"layer_norm{idx + 1}.1", layers.LayerNormalization, epsilon=1e-6)(x)
-            attn_maps = self.get(f"mhs_attn{idx + 1}", layers.MultiHeadAttention, num_heads=self.num_heads, key_dim=self.projection_dim, dropout=0.1)(x1, x1)
+            attn_maps = self.get(f"mhs_attn{idx + 1}", layers.MultiHeadAttention, num_heads=self.attn_heads, key_dim=self.projection_dim, dropout=0.1)(x1, x1)
             x2 = self.get(f"add{idx + 1}.1", layers.Add)([attn_maps, x])
             x3 = self.get(f"layer_norm{idx + 1}.2", layers.LayerNormalization, epsilon=1e-6)(x2)
             x3 = self.get(f"mlp{idx + 1}", MultiLayerPerceptron, hidden_units=[x.shape[-1] * 2, x.shape[-1]])(x3)
@@ -62,9 +62,9 @@ class TransformerEncoder(layers.Layer):
 
 @compact_get_layers
 class MobileViTBlock(layers.Layer):
-    def __init__(self, num_transformer_blocks: int, projection_dim: int, patch_size: int, **kwargs):
+    def __init__(self, transformer_blocks: int, projection_dim: int, patch_size: int, **kwargs):
         super().__init__(**kwargs)
-        self.num_transformer_blocks = num_transformer_blocks
+        self.transformer_blocks = transformer_blocks
         self.projection_dim = projection_dim
         self.patch_size = patch_size
 
@@ -75,7 +75,7 @@ class MobileViTBlock(layers.Layer):
         # Unfold local features into a sequence of patches for the transformer encoder:
         num_patches = int((local_features.shape[1] * local_features.shape[2]) / self.patch_size)
         patches = self.get("unfold", layers.Reshape, target_shape=(self.patch_size, num_patches, self.projection_dim))(local_features)
-        global_features = self.get("transformer_encoder", TransformerEncoder, num_blocks=self.num_transformer_blocks, projection_dim=self.projection_dim, num_heads=2)(patches)
+        global_features = self.get("transformer_encoder", TransformerEncoder, blocks=self.transformer_blocks, projection_dim=self.projection_dim, attn_heads=2)(patches)
 
         # Fold global features again into a 3D representation to concat with the input tensor:
         global_features = self.get("fold", layers.Reshape, target_shape=(*local_features.shape[1:-1], self.projection_dim))(global_features)
@@ -113,13 +113,13 @@ class CellCentroidFormer(models.Model):
             outputs=backbone.get_layer("block6a_expand_activation").output
         )
         self.neck = models.Sequential([
-            MobileViTBlock(num_transformer_blocks=2, projection_dim=projection_dims_neck[0], patch_size=4),
+            MobileViTBlock(transformer_blocks=2, projection_dim=projection_dims_neck[0], patch_size=4),
             layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3, padding="same", activation="relu"),
             layers.LayerNormalization(),
             layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3, padding="same", activation="relu"),
             layers.LayerNormalization(),
             layers.UpSampling2D(interpolation="bilinear"),
-            MobileViTBlock(num_transformer_blocks=2, projection_dim=projection_dims_neck[1], patch_size=4),
+            MobileViTBlock(transformer_blocks=2, projection_dim=projection_dims_neck[1], patch_size=4),
             layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3, padding="same", activation="relu"),
             layers.LayerNormalization(),
             layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3, padding="same", activation="relu"),
