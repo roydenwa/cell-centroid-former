@@ -75,15 +75,15 @@ class MobileViTBlock(layers.Layer):
         # Unfold local features into a sequence of patches for the transformer encoder:
         num_patches = int((local_features.shape[1] * local_features.shape[2]) / self.patch_size)
         patches = self.get("unfold", layers.Reshape, target_shape=(self.patch_size, num_patches, self.projection_dim))(local_features)
-        global_features = self.get("transformer_encoder", TransformerEncoder, blocks=self.transformer_blocks, projection_dim=self.projection_dim, attn_heads=2)(patches)
+        combined_features = self.get("transformer_encoder", TransformerEncoder, blocks=self.transformer_blocks, projection_dim=self.projection_dim, attn_heads=2)(patches)
 
-        # Fold global features again into a 3D representation to concat with the input tensor:
-        global_features = self.get("fold", layers.Reshape, target_shape=(*local_features.shape[1:-1], self.projection_dim))(global_features)
-        global_features = self.get("conv3", layers.Conv2D, filters=x.shape[-1], kernel_size=1, padding="same", activation=tf.nn.swish)(global_features)
-        combined_features = self.get("concat", layers.Concatenate, axis=-1)([x, global_features])
-        combined_features = self.get("conv4", layers.Conv2D, filters=self.projection_dim, kernel_size=3, padding="same", activation=tf.nn.swish)(combined_features)
+        # Fold combined features (local and global) again into a 3D representation to concat with the input tensor:
+        combined_features = self.get("fold", layers.Reshape, target_shape=(*local_features.shape[1:-1], self.projection_dim))(combined_features)
+        combined_features = self.get("conv3", layers.Conv2D, filters=x.shape[-1], kernel_size=1, padding="same", activation=tf.nn.swish)(combined_features)
+        concat_features = self.get("concat", layers.Concatenate, axis=-1)([x, combined_features])
+        concat_features = self.get("conv4", layers.Conv2D, filters=self.projection_dim, kernel_size=3, padding="same", activation=tf.nn.swish)(concat_features)
 
-        return combined_features
+        return concat_features
 
 
 @compact_get_layers
