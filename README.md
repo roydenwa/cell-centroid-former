@@ -11,10 +11,10 @@ Hybrid CNN-ViT model for cell detection in biomedical microscopy images.
 
 ## Citation
 ```bibtex
-@article{wagner2022cellcentroidformer,
+@inproceedings{wagner2022cellcentroidformer,
   title={CellCentroidFormer: Combining Self-attention and Convolution for Cell Detection},
-  author={Wagner, Royden and Rohr, Karl},
-  journal={Medical Image Understanding and Analysis},
+  author={Royden Wagner and Karl Rohr},
+  booktitle={Medical Image Understanding and Analysis},
   year={2022}
 }
 ```
