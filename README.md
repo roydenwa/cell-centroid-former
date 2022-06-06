@@ -1,4 +1,6 @@
 # CellCentroidFormer
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1GHqK61yOdhAele41pHf_ueklgCNqRcNf?usp=sharing)
+
 Hybrid CNN-ViT model for cell detection in biomedical microscopy images.
 
 ## Model architecture
