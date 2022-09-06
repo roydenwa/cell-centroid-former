@@ -2,11 +2,11 @@ import tensorflow as tf
 
 
 class MeanIoUThresh(tf.keras.metrics.MeanIoU):
-    def update_state(self, y_true, y_pred, sample_weight=None):
-        y_true_tresh = tf.where(y_true > 0.75, 1, 0)
-        y_pred_tresh = tf.where(y_pred > 0.75, 1, 0)
+    def update_state(self, y_true, y_pred, sample_weight=None, thresh=0.75):
+        y_true_thresh = tf.where(y_true > thresh, 1, 0)
+        y_pred_thresh = tf.where(y_pred > thresh, 1, 0)
 
-        return super().update_state(y_true_tresh, y_pred_tresh, sample_weight)
+        return super().update_state(y_true_thresh, y_pred_thresh, sample_weight)
 
 
 def ssim_metric(y_true, y_pred):
