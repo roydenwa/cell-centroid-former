@@ -13,7 +13,9 @@ def compact_get_layers(module: tf.Module) -> tf.Module:
         base_init(self, *args, **kwargs)
         self._layers = {}
 
-    def get(self, name: str, constructor: Callable[..., Any], *args, **kwargs) -> layers.Layer:
+    def get(
+        self, name: str, constructor: Callable[..., Any], *args, **kwargs
+    ) -> layers.Layer:
         if name not in self._layers:
             self._layers[name] = constructor(*args, **kwargs, name=name)
         return self._layers[name]
@@ -32,8 +34,9 @@ class MultiLayerPerceptron(layers.Layer):
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         for idx, units in enumerate(self.hidden_units):
-            x = self.get(f"dense{idx + 1}", layers.Dense, units,
-                         activation=tf.nn.swish)(x)
+            x = self.get(
+                f"dense{idx + 1}", layers.Dense, units, activation=tf.nn.swish
+            )(x)
             x = self.get(f"drop{idx + 1}", layers.Dropout, 0.1)(x)
         return x
 
@@ -54,16 +57,23 @@ class TransformerEncoder(layers.Layer):
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         for idx in range(self.blocks):
-            x1 = self.get(f"layer_norm{idx + 1}.1", layers.LayerNormalization,
-                          epsilon=1e-6)(x)
-            attn_maps = self.get(f"mhs_attn{idx + 1}", layers.MultiHeadAttention,
-                                 num_heads=self.attn_heads,
-                                 key_dim=self.projection_dim, dropout=0.1)(x1, x1)
+            x1 = self.get(
+                f"layer_norm{idx + 1}.1", layers.LayerNormalization,
+                epsilon=1e-6
+            )(x)
+            attn_maps = self.get(
+                f"mhs_attn{idx + 1}", layers.MultiHeadAttention, dropout=0.1,
+                num_heads=self.attn_heads, key_dim=self.projection_dim
+            )(x1, x1)
             x2 = self.get(f"add{idx + 1}.1", layers.Add)([attn_maps, x])
-            x3 = self.get(f"layer_norm{idx + 1}.2", layers.LayerNormalization,
-                          epsilon=1e-6)(x2)
-            x3 = self.get(f"mlp{idx + 1}", MultiLayerPerceptron,
-                          hidden_units=[x.shape[-1] * 2, x.shape[-1]])(x3)
+            x3 = self.get(
+                f"layer_norm{idx + 1}.2", layers.LayerNormalization,
+                epsilon=1e-6
+            )(x2)
+            x3 = self.get(
+                f"mlp{idx + 1}", MultiLayerPerceptron,
+                hidden_units=[x.shape[-1] * 2, x.shape[-1]]
+            )(x3)
             x = self.get(f"add{idx + 1}.2", layers.Add)([x3, x2])
 
         return x
@@ -84,38 +94,46 @@ class MobileViTBlock(layers.Layer):
         self.patch_size = patch_size
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
-        local_features = self.get("conv1", layers.Conv2D,
-                                  filters=self.projection_dim, kernel_size=3,
-                                  padding="same", activation=tf.nn.swish)(x)
-        local_features = self.get("conv2", layers.Conv2D,
-                                  filters=self.projection_dim, kernel_size=1,
-                                  padding="same", activation=tf.nn.swish)(local_features)
+        local_features = self.get(
+            "conv1", layers.Conv2D, filters=self.projection_dim, kernel_size=3,
+            padding="same", activation=tf.nn.swish
+        )(x)
+        local_features = self.get(
+            "conv2", layers.Conv2D, filters=self.projection_dim, kernel_size=1,
+            padding="same", activation=tf.nn.swish
+        )(local_features)
 
-        # Unfold local features into a sequence of patches for the transformer encoder:
-        num_patches = int((local_features.shape[1] * local_features.shape[2])
-                          / self.patch_size)
+        # Unfold local features into a sequence of patches for the transformer
+        # encoder:
+        num_patches = int(
+            (local_features.shape[1] * local_features.shape[2]) / self.patch_size
+        )
         target_shape = (self.patch_size, num_patches, self.projection_dim)
-        patches = self.get("unfold", layers.Reshape,
-                           target_shape=target_shape)(local_features)
-        combined_features = self.get("transformer_encoder", TransformerEncoder,
-                                     blocks=self.transformer_blocks,
-                                     projection_dim=self.projection_dim,
-                                     attn_heads=2)(patches)
+        patches = self.get(
+            "unfold", layers.Reshape, target_shape=target_shape
+        )(local_features)
+        combined_features = self.get(
+            "transformer_encoder", TransformerEncoder, attn_heads=2,
+            blocks=self.transformer_blocks, projection_dim=self.projection_dim,
+        )(patches)
 
         # Fold combined features (local and global) into a 3D representation
         # to concat with the input tensor:
         target_shape = (*local_features.shape[1:-1], self.projection_dim)
-        combined_features = self.get("fold", layers.Reshape,
-                                     target_shape=target_shape)(combined_features)
-        combined_features = self.get("conv3", layers.Conv2D, filters=x.shape[-1],
-                                     kernel_size=1, padding="same",
-                                     activation=tf.nn.swish)(combined_features)
-        concat_features = self.get("concat", layers.Concatenate,
-                                   axis=-1)([x, combined_features])
-        concat_features = self.get("conv4", layers.Conv2D,
-                                   filters=self.projection_dim, kernel_size=3,
-                                   padding="same",
-                                   activation=tf.nn.swish)(concat_features)
+        combined_features = self.get(
+            "fold", layers.Reshape, target_shape=target_shape
+        )(combined_features)
+        combined_features = self.get(
+            "conv3", layers.Conv2D, filters=x.shape[-1], kernel_size=1,
+            padding="same", activation=tf.nn.swish
+        )(combined_features)
+        concat_features = self.get(
+            "concat", layers.Concatenate, axis=-1
+        )([x, combined_features])
+        concat_features = self.get(
+            "conv4", layers.Conv2D, filters=self.projection_dim, kernel_size=3,
+            padding="same", activation=tf.nn.swish
+        )(concat_features)
 
         return concat_features
 
@@ -128,11 +146,15 @@ class UpsamplingBlock(layers.Layer):
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         x = self.get("up", layers.UpSampling2D, interpolation="bilinear")(x)
-        x = self.get("conv1", layers.Conv2D, filters=self.conv_filters,
-                     kernel_size=3, padding="same", activation="relu")(x)
+        x = self.get(
+            "conv1", layers.Conv2D, filters=self.conv_filters, kernel_size=3,
+            padding="same", activation="relu"
+        )(x)
         x = self.get("norm1", layers.BatchNormalization)(x)
-        x = self.get("conv2", layers.Conv2D, filters=self.conv_filters,
-                     kernel_size=3, padding="same", activation="relu")(x)
+        x = self.get(
+            "conv2", layers.Conv2D, filters=self.conv_filters, kernel_size=3,
+            padding="same", activation="relu"
+        )(x)
         x = self.get("norm2", layers.BatchNormalization)(x)
 
         return x
@@ -155,41 +177,57 @@ class CellCentroidFormer(models.Model):
             outputs=backbone.get_layer("block6a_expand_activation").output
         )
         self.neck = models.Sequential([
-            MobileViTBlock(transformer_blocks=2,
-                           projection_dim=projection_dims_neck[0], patch_size=4),
-            layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3,
-                          padding="same", activation="relu"),
+            MobileViTBlock(
+                transformer_blocks=2, projection_dim=projection_dims_neck[0],
+                patch_size=4
+            ),
+            layers.Conv2D(
+                filters=projection_dims_neck[0], kernel_size=3, padding="same",
+                activation="relu"
+            ),
             layers.LayerNormalization(),
-            layers.Conv2D(filters=projection_dims_neck[0], kernel_size=3,
-                          padding="same", activation="relu"),
+            layers.Conv2D(
+                filters=projection_dims_neck[0], kernel_size=3, padding="same",
+                activation="relu"
+            ),
             layers.LayerNormalization(),
             layers.UpSampling2D(interpolation="bilinear"),
-            MobileViTBlock(transformer_blocks=2,
-                           projection_dim=projection_dims_neck[1], patch_size=4),
-            layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3,
-                          padding="same", activation="relu"),
+            MobileViTBlock(
+                transformer_blocks=2, projection_dim=projection_dims_neck[1],
+                patch_size=4
+            ),
+            layers.Conv2D(
+                filters=projection_dims_neck[1] * 2, kernel_size=3,
+                padding="same", activation="relu"
+            ),
             layers.LayerNormalization(),
-            layers.Conv2D(filters=projection_dims_neck[1] * 2, kernel_size=3,
-                          padding="same", activation="relu"),
+            layers.Conv2D(
+                filters=projection_dims_neck[1] * 2, kernel_size=3,
+                padding="same", activation="relu"
+            ),
             layers.LayerNormalization()
         ], name="neck")
         self.centroid_heatmap_head = models.Sequential([
             UpsamplingBlock(conv_filters=conv_filters_heads[0]),
             UpsamplingBlock(conv_filters=conv_filters_heads[1]),
             UpsamplingBlock(conv_filters=conv_filters_heads[2]),
-            layers.Conv2D(filters=32, kernel_size=3, padding="same",
-                          activation="relu"),
-            layers.Conv2D(filters=1, kernel_size=3, padding="same",
-                          activation="sigmoid")
+            layers.Conv2D(
+                filters=32, kernel_size=3, padding="same", activation="relu"
+            ),
+            layers.Conv2D(
+                filters=1, kernel_size=3, padding="same", activation="sigmoid"
+            )
         ], name="centroid_heatmap_head")
         self.cell_dimensions_head = models.Sequential([
             UpsamplingBlock(conv_filters=conv_filters_heads[0]),
             UpsamplingBlock(conv_filters=conv_filters_heads[1]),
             UpsamplingBlock(conv_filters=conv_filters_heads[2]),
-            layers.Conv2D(filters=32, kernel_size=3, padding="same",
-                          activation="relu"),
-            layers.Conv2D(filters=2, kernel_size=3, padding="same",
-                          activation="sigmoid")
+            layers.Conv2D(
+                filters=32, kernel_size=3, padding="same", activation="relu"
+            ),
+            layers.Conv2D(
+                filters=2, kernel_size=3, padding="same", activation="sigmoid"
+            )
         ], name="cell_dimensions_head")
 
     def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
