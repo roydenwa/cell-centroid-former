@@ -238,6 +238,5 @@ class CellCentroidFormer(models.Model):
 
         return {
             "centroid_heatmap": centroid_heatmap,
-            "height_map": tf.expand_dims(cell_dimensions[..., 0], axis=-1),
-            "width_map": tf.expand_dims(cell_dimensions[..., 1], axis=-1)
+            "cell_dimensions": cell_dimensions
         }
