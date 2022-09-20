@@ -166,7 +166,8 @@ class CellCentroidFormer(models.Model):
         self,
         input_shape: Tuple[int, int, int],
         projection_dims_neck: Tuple[int, int],
-        conv_filters_heads: Tuple[int, int, int]
+        conv_filters_heads: Tuple[int, int, int],
+        include_top: bool = True
     ):
         super().__init__()
         input_layer = layers.Input(shape=input_shape)
@@ -176,59 +177,76 @@ class CellCentroidFormer(models.Model):
             inputs=backbone.input,
             outputs=backbone.get_layer("block6a_expand_activation").output
         )
-        self.neck = models.Sequential([
-            MobileViTBlock(
-                transformer_blocks=2, projection_dim=projection_dims_neck[0],
-                patch_size=4
-            ),
-            layers.Conv2D(
-                filters=projection_dims_neck[0], kernel_size=3, padding="same",
-                activation="relu"
-            ),
-            layers.LayerNormalization(),
-            layers.Conv2D(
-                filters=projection_dims_neck[0], kernel_size=3, padding="same",
-                activation="relu"
-            ),
-            layers.LayerNormalization(),
-            layers.UpSampling2D(interpolation="bilinear"),
-            MobileViTBlock(
-                transformer_blocks=2, projection_dim=projection_dims_neck[1],
-                patch_size=4
-            ),
-            layers.Conv2D(
-                filters=projection_dims_neck[1] * 2, kernel_size=3,
-                padding="same", activation="relu"
-            ),
-            layers.LayerNormalization(),
-            layers.Conv2D(
-                filters=projection_dims_neck[1] * 2, kernel_size=3,
-                padding="same", activation="relu"
-            ),
-            layers.LayerNormalization()
-        ], name="neck")
-        self.centroid_heatmap_head = models.Sequential([
-            UpsamplingBlock(conv_filters=conv_filters_heads[0]),
-            UpsamplingBlock(conv_filters=conv_filters_heads[1]),
-            UpsamplingBlock(conv_filters=conv_filters_heads[2]),
-            layers.Conv2D(
-                filters=32, kernel_size=3, padding="same", activation="relu"
-            ),
-            layers.Conv2D(
-                filters=1, kernel_size=3, padding="same", activation="sigmoid"
+        self.neck = models.Sequential(
+            name="neck",
+            layers=[
+                MobileViTBlock(
+                    transformer_blocks=2, patch_size=4,
+                    projection_dim=projection_dims_neck[0],
+                ),
+                layers.Conv2D(
+                    filters=projection_dims_neck[0], kernel_size=3,
+                    padding="same", activation="relu"
+                ),
+                layers.LayerNormalization(),
+                layers.Conv2D(
+                    filters=projection_dims_neck[0], kernel_size=3,
+                    padding="same", activation="relu"
+                ),
+                layers.LayerNormalization(),
+                layers.UpSampling2D(interpolation="bilinear"),
+                MobileViTBlock(
+                    transformer_blocks=2, patch_size=4,
+                    projection_dim=projection_dims_neck[1],
+                ),
+                layers.Conv2D(
+                    filters=projection_dims_neck[1] * 2, kernel_size=3,
+                    padding="same", activation="relu"
+                ),
+                layers.LayerNormalization(),
+                layers.Conv2D(
+                    filters=projection_dims_neck[1] * 2, kernel_size=3,
+                    padding="same", activation="relu"
+                ),
+                layers.LayerNormalization()
+            ]
+        )
+        self.centroid_heatmap_head = models.Sequential(
+            name="centroid_heatmap_head",
+            layers=[
+                UpsamplingBlock(conv_filters=conv_filters_heads[0]),
+                UpsamplingBlock(conv_filters=conv_filters_heads[1]),
+                UpsamplingBlock(conv_filters=conv_filters_heads[2]),
+                layers.Conv2D(
+                    filters=32, kernel_size=3, padding="same", activation="relu"
+                ),
+            ]
+        )
+        if include_top:
+            self.centroid_heatmap_head.add(
+                layers.Conv2D(
+                    filters=1, kernel_size=3, padding="same",
+                    activation="sigmoid"
+                )
             )
-        ], name="centroid_heatmap_head")
-        self.cell_dimensions_head = models.Sequential([
-            UpsamplingBlock(conv_filters=conv_filters_heads[0]),
-            UpsamplingBlock(conv_filters=conv_filters_heads[1]),
-            UpsamplingBlock(conv_filters=conv_filters_heads[2]),
-            layers.Conv2D(
-                filters=32, kernel_size=3, padding="same", activation="relu"
-            ),
-            layers.Conv2D(
-                filters=2, kernel_size=3, padding="same", activation="sigmoid"
+        self.cell_dimensions_head = models.Sequential(
+            name="cell_dimensions_head",
+            layers=[
+                UpsamplingBlock(conv_filters=conv_filters_heads[0]),
+                UpsamplingBlock(conv_filters=conv_filters_heads[1]),
+                UpsamplingBlock(conv_filters=conv_filters_heads[2]),
+                layers.Conv2D(
+                    filters=32, kernel_size=3, padding="same", activation="relu"
+                ),
+            ]
+        )
+        if include_top:
+            self.cell_dimensions_head.add(
+                layers.Conv2D(
+                    filters=2, kernel_size=3, padding="same",
+                    activation="sigmoid"
+                )
             )
-        ], name="cell_dimensions_head")
 
     def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
         x = self.backbone(x)
