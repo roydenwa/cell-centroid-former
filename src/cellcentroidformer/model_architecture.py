@@ -167,11 +167,16 @@ class CellCentroidFormer(models.Model):
         input_shape: Tuple[int, int, int],
         projection_dims_neck: Tuple[int, int],
         conv_filters_heads: Tuple[int, int, int],
-        include_top: bool = True
+        include_top: bool = True,
+        backbone_weights: str = "imagenet",
     ):
         super().__init__()
         input_layer = layers.Input(shape=input_shape)
-        backbone = EfficientNetV2S(input_tensor=input_layer, include_top=False)
+        backbone = EfficientNetV2S(
+            input_tensor=input_layer,
+            include_top=False,
+            weights=backbone_weights
+        )
         self.backbone = models.Model(
             name="backbone",
             inputs=backbone.input,
