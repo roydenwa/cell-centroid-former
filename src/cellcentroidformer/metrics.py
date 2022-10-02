@@ -10,8 +10,12 @@ class MeanIoUThresh(tf.keras.metrics.MeanIoU):
 
 
 def ssim_metric(y_true, y_pred):
-    ssim_score = tf.image.ssim(y_true, y_pred, max_val=1.0)
-    return tf.reduce_mean(ssim_score, axis=-1)
+    max_true = tf.reduce_max(y_true)
+    max_pred = tf.reduce_max(y_pred)
+    max_val = max_true if max_true > max_pred else max_pred
+    ssim_score = tf.reduce_mean(tf.image.ssim(y_true, y_pred, max_val=max_val))
+
+    return ssim_score
 
 
 def circle2ellipse_ssim(radius_map, height_map, width_map, img_width, img_height):
