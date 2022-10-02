@@ -18,8 +18,12 @@ def circle2ellipse_ssim(radius_map, height_map, width_map, img_width, img_height
     """For comparing the outputs of CellCentroidFormer and CircleNet."""
     height_map = height_map * img_height
     width_map = width_map * img_width
-    max_height = height_map.max() if height_map.max() > radius_map.max() else radius_map.max()
-    max_width = width_map.max() if width_map.max() > radius_map.max() else radius_map.max()
+    max_height = (
+        height_map.max() if height_map.max() > radius_map.max() else radius_map.max()
+    )
+    max_width = (
+        width_map.max() if width_map.max() > radius_map.max() else radius_map.max()
+    )
 
     height_ssim = tf.image.ssim(height_map, radius_map, max_val=max_height)
     width_ssim = tf.image.ssim(width_map, radius_map, max_val=max_width)
