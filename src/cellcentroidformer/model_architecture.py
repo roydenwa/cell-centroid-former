@@ -38,6 +38,26 @@ class MultiLayerPerceptron(layers.Layer):
 
 
 @compact_get_layers
+class ChannelMLP(layers.Layer):
+    def __init__(self, channels: list, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.channels = channels
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        for idx, channels in enumerate(self.channels):
+            x = self.get(
+                f"conv1x1_{idx + 1}",
+                layers.Conv2D,
+                filters=channels,
+                kernel_size=1,
+                padding="same",
+                activation="swish",
+            )(x)
+            x = self.get(f"drop{idx + 1}", layers.Dropout, 0.1)(x)
+        return x
+
+
+@compact_get_layers
 class TransformerEncoder(layers.Layer):
     def __init__(self, blocks: int, projection_dim: int, attn_heads: int, **kwargs):
         super().__init__(**kwargs)
