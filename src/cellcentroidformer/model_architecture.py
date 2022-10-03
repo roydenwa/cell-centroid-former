@@ -59,11 +59,19 @@ class ChannelMLP(layers.Layer):
 
 @compact_get_layers
 class TransformerEncoder(layers.Layer):
-    def __init__(self, blocks: int, projection_dim: int, attn_heads: int, **kwargs):
+    def __init__(
+        self,
+        blocks: int,
+        projection_dim: int,
+        attn_heads: int,
+        mlp_type: str = "fully_connected",
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.blocks = blocks
         self.projection_dim = projection_dim
         self.attn_heads = attn_heads
+        self.mlp_type = mlp_type
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         for idx in range(self.blocks):
@@ -81,11 +89,20 @@ class TransformerEncoder(layers.Layer):
             x3 = self.get(
                 f"layer_norm{idx + 1}.2", layers.LayerNormalization, epsilon=1e-6
             )(x2)
-            x3 = self.get(
-                f"mlp{idx + 1}",
-                MultiLayerPerceptron,
-                hidden_units=[x.shape[-1] * 2, x.shape[-1]],
-            )(x3)
+
+            if self.mlp_type == "fully_connected":
+                x3 = self.get(
+                    f"mlp{idx + 1}",
+                    MultiLayerPerceptron,
+                    hidden_units=[x.shape[-1] * 2, x.shape[-1]],
+                )(x3)
+            elif self.mlp_type == "channel":
+                x3 = self.get(
+                    f"channel_mlp{idx + 1}",
+                    ChannelMLP,
+                    channels=[x.shape[-1] * 2, x.shape[-1]],
+                )(x3)
+
             x = self.get(f"add{idx + 1}.2", layers.Add)([x3, x2])
 
         return x
@@ -94,12 +111,18 @@ class TransformerEncoder(layers.Layer):
 @compact_get_layers
 class MobileViTBlock(layers.Layer):
     def __init__(
-        self, transformer_blocks: int, projection_dim: int, patch_size: int, **kwargs
+        self,
+        transformer_blocks: int,
+        projection_dim: int,
+        patch_size: int,
+        mlp_type: str = "fully_connected",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.transformer_blocks = transformer_blocks
         self.projection_dim = projection_dim
         self.patch_size = patch_size
+        self.mlp_type = mlp_type
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
         local_features = self.get(
@@ -134,6 +157,7 @@ class MobileViTBlock(layers.Layer):
             attn_heads=2,
             blocks=self.transformer_blocks,
             projection_dim=self.projection_dim,
+            mlp_type=self.mlp_type,
         )(patches)
 
         # Fold combined features (local and global) into a 3D representation
@@ -205,6 +229,7 @@ class CellCentroidFormer(models.Model):
         conv_filters_heads: Tuple[int, int, int],
         include_top: bool = True,
         backbone_weights: str = "imagenet",
+        mlp_type: str = "fully_connected",
     ):
         super().__init__()
         input_layer = layers.Input(shape=input_shape)
@@ -223,6 +248,7 @@ class CellCentroidFormer(models.Model):
                     transformer_blocks=2,
                     patch_size=4,
                     projection_dim=projection_dims_neck[0],
+                    mlp_type=mlp_type,
                 ),
                 layers.Conv2D(
                     filters=projection_dims_neck[0],
@@ -243,6 +269,7 @@ class CellCentroidFormer(models.Model):
                     transformer_blocks=2,
                     patch_size=4,
                     projection_dim=projection_dims_neck[1],
+                    mlp_type=mlp_type,
                 ),
                 layers.Conv2D(
                     filters=projection_dims_neck[1] * 2,
