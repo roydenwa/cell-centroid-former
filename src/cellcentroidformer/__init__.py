@@ -6,3 +6,4 @@ from cellcentroidformer.generate_train_samples import (
     bboxes2heatmap,
     bboxes2center_dim_blocks,
 )
+from cellcentroidformer.decode_predictions import decode_centroid_representation
