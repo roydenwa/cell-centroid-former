@@ -219,6 +219,28 @@ class UpsamplingBlock(layers.Layer):
         return x
 
 
+class ContextBlock(layers.Layer):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.r_conv_3x3 = layers.Conv2D(kernel_size=3, filters=10, padding="same")
+        self.b_conv_3x3 = layers.Conv2D(kernel_size=3, filters=10, padding="same")
+        self.r_conv_1x1 = layers.Conv2D(kernel_size=1, filters=1, padding="same")
+        self.b_conv_1x1 = layers.Conv2D(kernel_size=1, filters=1, padding="same")
+
+    def call(self, x: tf.Tensor) -> tf.Tensor:
+        r, g, b = tf.split(x, num_or_size_splits=3, axis=-1)
+        r = self.r_conv_3x3(r)
+        r = self.r_conv_1x1(r)
+        r = r * g + g  # MAC
+        r = tf.nn.sigmoid(r)
+        b = self.b_conv_3x3(b)
+        b = self.b_conv_1x1(b)
+        b = b * g + g
+        b = tf.nn.sigmoid(b)
+
+        return tf.concat([r, g, b], axis=-1)
+
+
 class CellCentroidFormer(models.Model):
     """Cell detection model that combines self-attention and convolution."""
 
@@ -227,12 +249,17 @@ class CellCentroidFormer(models.Model):
         input_shape: Tuple[int, int, int],
         projection_dims_neck: Tuple[int, int],
         conv_filters_heads: Tuple[int, int, int],
+        context_block: bool = False,
         include_top: bool = True,
         backbone_weights: str = "imagenet",
         mlp_type: str = "fully_connected",
     ):
         super().__init__()
+
         input_layer = layers.Input(shape=input_shape)
+        if context_block:
+            input_layer = models.Sequential([input_layer, ContextBlock()]).output
+
         backbone = EfficientNetV2S(
             input_tensor=input_layer, include_top=False, weights=backbone_weights
         )
