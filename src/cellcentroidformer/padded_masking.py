@@ -37,8 +37,21 @@ def get_padded_patch_mask(
         else:
             patch_mask = np.vstack((patch_mask, patch_row))
 
+    last_pad = (img_size[0] - patch_mask.shape[0], img_size[1] - patch_mask.shape[1])
+
+    last_pad_x = last_pad[0] // 2
+    last_pad_x_r = last_pad[0] % 2
+    last_pad_y = last_pad[0] // 2
+    last_pad_y_r = last_pad[0] % 2
+
     patch_mask = np.pad(
-        patch_mask, mode="constant", constant_values=1, pad_width=pad_width
+        patch_mask,
+        mode="constant",
+        constant_values=1,
+        pad_width=(
+            (last_pad_x, last_pad_x + last_pad_x_r),
+            (last_pad_y, last_pad_y + last_pad_y_r),
+        ),
     )
 
     return patch_mask
