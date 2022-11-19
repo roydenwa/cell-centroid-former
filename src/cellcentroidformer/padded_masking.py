@@ -3,7 +3,9 @@ import numpy as np
 from typing import Tuple
 
 
-def get_padded_patch_mask(patch_size = (12, 12), img_size = (384, 384)):
+def get_padded_patch_mask(
+    patch_size: Tuple[int, int] = (12, 12), img_size: Tuple[int, ...] = (384, 384)
+) -> np.ndarray:
     pad_size = patch_size[0] // 2
     mask = np.zeros(img_size)
 
@@ -17,10 +19,12 @@ def get_padded_patch_mask(patch_size = (12, 12), img_size = (384, 384)):
             row_end = row_start + patch_size[0]
             col_end = col_start + patch_size[1]
 
-            mask[row_start:row_end, col_start:col_end] += np.random.randint(low=0, high=2)
+            mask[row_start:row_end, col_start:col_end] += np.random.randint(
+                low=0, high=2
+            )
             col_start += pad_size + patch_size[1]
 
         row_start += pad_size + patch_size[0]
         col_start = pad_size
-    
+
     return mask
