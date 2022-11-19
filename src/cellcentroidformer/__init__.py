@@ -7,4 +7,5 @@ from cellcentroidformer.generate_train_samples import (
     bboxes2center_dim_blocks,
 )
 from cellcentroidformer.decode_predictions import decode_centroid_representation
-from cellcentroidformer.padded_masking import get_padded_patch_mask
+from cellcentroidformer.padded_masking import get_padded_patch_mask, PaddedMasking
+from cellcentroidformer.self_supervised import PseudocolorizeMaskedCells
