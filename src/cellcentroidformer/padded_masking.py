@@ -17,7 +17,7 @@ def get_padded_patch_mask(patch_size = (12, 12), img_size = (384, 384)):
             row_end = row_start + patch_size[0]
             col_end = col_start + patch_size[1]
 
-            mask[row_start:row_end, col_start:col_end] += tf.random.uniform(shape=[], maxval=2, dtype=tf.int32)
+            mask[row_start:row_end, col_start:col_end] += np.random.randint(low=0, high=2)
             col_start += pad_size + patch_size[1]
 
         row_start += pad_size + patch_size[0]
