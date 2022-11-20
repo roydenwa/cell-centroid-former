@@ -6,19 +6,22 @@ from cellcentroidformer.model_architecture import CellCentroidFormer
 
 
 class PseudocolorizeMaskedCells(CellCentroidFormer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, input_shape, patch_size = (12, 12), **kwargs):
+        super().__init__(input_shape, **kwargs)
         self.masking = PaddedMasking(
-            img_size=(384, 384, 3),
-            patch_size=(12, 12)
+            img_size=input_shape,
+            patch_size=patch_size,
         )
         self.augs = models.Sequential(
             name="augs",
             layers=[
                 layers.RandomFlip(),
-                layers.RandomCrop(height=320, width=320),
+                layers.RandomCrop(
+                    height=int(input_shape[0] * 0.9), 
+                    width=int(input_shape[1] * 0.9)
+                ),
                 layers.RandomRotation(factor=(-0.2, 0.2)),
-                layers.Resizing(height=384, width=384),
+                layers.Resizing(height=input_shape[0], width=input_shape[1]),
                 layers.Rescaling(scale=1.0 / 255),
             ],
         )
