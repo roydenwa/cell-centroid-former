@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from skimage import io
-from cellcentroidformer.preprocessing import min_max_scaling
 
 
 def mask2bboxes(mask: np.ndarray) -> list:
@@ -85,8 +84,8 @@ def save_tif_imgs_as_jpg(img_paths, save_dir):
     for idx, path in enumerate(tqdm(img_paths)):
         img = io.imread(path)
         img = cv2.medianBlur(img, ksize=3)
-        img = min_max_scaling(img)
-        img = (img * 255).astype(np.uint8)
+        img *= 255.0 / img.max()
+        img = img.astype(np.uint8)
 
         if img.shape[-1] != 3:
             img = np.dstack((img, img, img))
