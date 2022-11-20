@@ -22,7 +22,6 @@ class PseudocolorizeMaskedCells(CellCentroidFormer):
                 ),
                 layers.RandomRotation(factor=(-0.2, 0.2)),
                 layers.Resizing(height=input_shape[0], width=input_shape[1]),
-                layers.Rescaling(scale=1.0 / 255),
             ],
         )
 
