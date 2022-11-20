@@ -8,7 +8,10 @@ from cellcentroidformer.model_architecture import CellCentroidFormer
 class PseudocolorizeMaskedCells(CellCentroidFormer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.masking = PaddedMasking(patch_size=(12, 12))
+        self.masking = PaddedMasking(
+            img_size=(384, 384, 3),
+            patch_size=(12, 12)
+        )
         self.augs = models.Sequential(
             name="augs",
             layers=[
