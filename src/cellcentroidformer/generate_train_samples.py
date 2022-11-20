@@ -1,5 +1,11 @@
 import cv2
 import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+from skimage import io
+from cellcentroidformer.preprocessing import min_max_scaling
 
 
 def mask2bboxes(mask: np.ndarray) -> list:
@@ -73,3 +79,39 @@ def bboxes2center_dim_blocks(bboxes: list, img: np.ndarray) -> np.ndarray:
     center_dim_blocks = np.dstack((dim_y_blocks, dim_x_blocks))
 
     return center_dim_blocks
+
+
+def save_tif_imgs_as_jpg(img_paths, save_dir):
+    for idx, path in enumerate(tqdm(img_paths)):
+        img = io.imread(path)
+        img = cv2.medianBlur(img, ksize=3)
+        img = min_max_scaling(img)
+        img = (img * 255).astype(np.uint8)
+
+        if img.shape[-1] != 3:
+            img = np.dstack((img, img, img))
+
+        io.imsave(fname=f"{save_dir}/img{idx:05}.jpg", arr=img, check_contrast=False)
+
+
+@tf.function
+def parse_imgs(img_path, img_size=(384, 384)):
+    img_string = tf.io.read_file(img_path)
+    img = tf.image.decode_jpeg(img_string, channels=3)
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    img = tf.image.resize(img, size=img_size)
+
+    return img
+
+
+def pseudo_colorize_imgs(img, img_size=(384, 384, 3)):
+    def _pseudo_colorize(img, pcolor_fn=plt.cm.nipy_spectral):
+        img_pcolor = pcolor_fn(img[..., 1])[..., 0:3]  # RGBA -> RGB
+        img_pcolor = img_pcolor.astype(np.float32)
+
+        return img_pcolor
+
+    img_pcolor = tf.numpy_function(func=_pseudo_colorize, inp=[img], Tout=tf.float32)
+    img_pcolor.set_shape(img_size)
+
+    return img, img_pcolor
