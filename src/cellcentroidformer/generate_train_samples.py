@@ -100,7 +100,6 @@ def parse_imgs(img_path, img_size=(384, 384)):
     img = tf.image.decode_jpeg(img_string, channels=3)
     img = tf.image.convert_image_dtype(img, tf.float32)
     img = tf.image.resize(img, size=img_size)
-    img = img / 255.0
 
     return img
 
@@ -114,5 +113,6 @@ def pseudo_colorize_imgs(img, img_size=(384, 384, 3)):
 
     img_pcolor = tf.numpy_function(func=_pseudo_colorize, inp=[img], Tout=tf.float32)
     img_pcolor.set_shape(img_size)
+    img = img / 255.0
 
     return img, img_pcolor
