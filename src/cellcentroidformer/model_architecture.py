@@ -261,7 +261,10 @@ class CellCentroidFormer(models.Model):
             input_layer = models.Sequential([input_layer, ContextBlock()]).output
 
         backbone = EfficientNetV2S(
-            input_tensor=input_layer, include_top=False, weights=backbone_weights
+            input_tensor=input_layer,
+            include_top=False,
+            weights=backbone_weights,
+            include_preprocessing=False,
         )
         self.backbone = models.Model(
             name="backbone",
