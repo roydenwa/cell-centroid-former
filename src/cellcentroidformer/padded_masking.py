@@ -7,14 +7,18 @@ from tensorflow.keras import layers
 
 
 class PaddedMasking(layers.Layer):
-    def __init__(self, patch_size: Tuple[int, int] = (12, 12), **kwargs):
+    def __init__(
+        self, patch_size: Tuple[int, int], img_size: Tuple[int, ...], **kwargs
+    ):
         super().__init__(**kwargs)
         self.patch_size = patch_size
+        self.img_size = img_size
+        self.mask = tf.Variable(
+            initial_value=tnp.ones(img_size, dtype=tf.float32), trainable=False
+        )
 
     def call(self, x: tf.Tensor) -> tf.Tensor:
-        img_size = tf.shape(x)[1:]
-        mask = tf.Variable(tnp.ones(img_size, dtype=tf.float32))
-        mask = update_padded_mask(mask, self.patch_size, img_size)
+        mask = update_padded_mask(self.mask, self.patch_size, self.img_size)
         x = x * mask
 
         return x
