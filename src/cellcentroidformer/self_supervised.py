@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 from tensorflow.keras import layers, models
-from padded_masking import PaddedMasking
-from model_architecture import CellCentroidFormer
+from cellcentroidformer.padded_masking import PaddedMasking
+from cellcentroidformer.model_architecture import CellCentroidFormer
 
 
 class PseudocolorizeMaskedCells(CellCentroidFormer):
