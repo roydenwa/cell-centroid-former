@@ -84,7 +84,8 @@ def save_tif_imgs_as_jpg(img_paths, save_dir):
     for idx, path in enumerate(tqdm(img_paths)):
         img = io.imread(path)
         img = cv2.medianBlur(img, ksize=3)
-        img *= 255 / img.max()
+        img = img.astype(np.float64)
+        img *= 255.0 / img.max()
         img = img.astype(np.uint8)
 
         if img.shape[-1] != 3:
