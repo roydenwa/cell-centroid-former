@@ -34,4 +34,4 @@ The subclass implementation of the MobileViT block ([Mehta and Rastegari, 2022](
 
 The `@compact_get_layers` class decorator is inspired by the [get method](https://danijar.com/structuring-models) by Danijar Hafner and the nn.compact decorator in flax.
 
-The normalized termperature-scaled cross-entropy loss is based on the [SimCLR implementation](https://keras.io/examples/vision/semisupervised_simclr) by András Béres.
+The normalized termperature-scaled cross-entropy loss for SimCLR ([Chen et al., 2020](https://arxiv.org/abs/2002.05709))is based on the [implementation](https://keras.io/examples/vision/semisupervised_simclr) by András Béres.
