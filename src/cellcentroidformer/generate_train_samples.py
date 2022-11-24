@@ -98,8 +98,9 @@ def read_imgs(img_path, img_size=(384, 384, 3)):
     def _read_imgs(img_path, img_size):
         img_path = img_path.decode()
         img = io.imread(img_path)
-        img = cv2.resize(img, img_size)
+        img = cv2.resize(img, (img_size[0], img_size[1]))
         img = min_max_scaling(img)
+        img = np.dstack((img, img, img))
 
         return img.astype(np.float32)
 
