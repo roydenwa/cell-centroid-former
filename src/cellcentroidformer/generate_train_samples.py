@@ -94,12 +94,16 @@ def save_tif_imgs_as_jpg(img_paths, save_dir):
         io.imsave(fname=f"{save_dir}/img{idx:05}.jpg", arr=img, check_contrast=False)
 
 
-@tf.function
-def parse_imgs(img_path, img_size=(384, 384)):
-    img_string = tf.io.read_file(img_path)
-    img = tf.image.decode_jpeg(img_string, channels=3)
-    img = tf.image.convert_image_dtype(img, tf.float32)
-    img = tf.image.resize(img, size=img_size)
+def read_imgs(img_path, img_size=(384, 384, 3)):
+    def _read_imgs(img_path, img_size):
+        img_path = img_path.decode()
+        img = io.imread(img_path)
+        img = cv2.resize(img, img_size)
+
+        return img.astype(np.float32)
+
+    img = tf.numpy_function(func=_read_imgs, inp=[img_path, img_size], Tout=tf.float32)
+    img.set_shape(img_size)
 
     return img
 
