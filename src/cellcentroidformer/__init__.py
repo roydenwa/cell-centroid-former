@@ -5,7 +5,7 @@ from cellcentroidformer.generate_train_samples import (
     mask2bboxes,
     bboxes2heatmap,
     bboxes2center_dim_blocks,
-    parse_imgs,
+    read_imgs,
     pseudo_colorize_imgs,
     save_tif_imgs_as_jpg,
 )
