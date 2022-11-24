@@ -117,6 +117,6 @@ def pseudo_colorize_imgs(img, img_size=(384, 384, 3)):
 
     img_pcolor = tf.numpy_function(func=_pseudo_colorize, inp=[img], Tout=tf.float32)
     img_pcolor.set_shape(img_size)
-    img = img / 255.0
+    img = min_max_scaling(img)
 
     return img, img_pcolor
