@@ -253,6 +253,7 @@ class CellCentroidFormer(models.Model):
         include_top: bool = True,
         backbone_weights: str = "imagenet",
         mlp_type: str = "fully_connected",
+        augs: models.Model = models.Sequential(),
     ):
         super().__init__()
 
@@ -351,6 +352,28 @@ class CellCentroidFormer(models.Model):
                     filters=2, kernel_size=3, padding="same", activation="sigmoid"
                 )
             )
+        self.augs = augs
+
+    def train_step(self, data):
+        x, y = data
+
+        # Skipped for pre-training subclasses
+        if self.__class__ is CellCentroidFormer:
+            y = tf.concat([y[0], y[1]], axis=-1) # Depth stack heatmap and dim maps
+            concat_xy = tf.concat([x, y], axis=0)
+            concat_xy = self.augs(concat_xy)
+
+            batch_size = tf.shape(x)[0]  # Last batch might be smaller
+            x = concat_xy[0:batch_size, ...]
+            x = self.masking(x)
+
+            # Unstack to match the output format of CellCentroidFormer
+            y = {
+                "centroid_heatmap": concat_xy[batch_size:, ..., 0],
+                "cell_dimensions": concat_xy[batch_size:, ..., 1:],
+            }
+
+        return super().train_step((x, y))
 
     def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
         x = self.backbone(x)
