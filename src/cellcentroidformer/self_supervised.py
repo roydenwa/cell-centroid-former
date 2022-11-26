@@ -68,6 +68,7 @@ class SimCLR(models.Model):
                 layers.Resizing(height=224, width=224),
                 layers.RandomContrast(factor=0.3),
                 layers.RandomBrightness(factor=0.3),
+                layers.Rescaling(scale=1.0 / 255),
             ],
             name="augs",
         )
