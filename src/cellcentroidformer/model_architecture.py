@@ -360,16 +360,16 @@ class CellCentroidFormer(models.Model):
         # Skipped for pre-training subclasses
         if self.__class__ is CellCentroidFormer:
             y = tf.concat([y[0], y[1]], axis=-1) # Depth stack heatmap and dim maps
-            concat_xy = tf.concat([x, y], axis=0)
-            concat_xy = self.augs(concat_xy)
+            xy_concat = tf.concat([x, y], axis=0)
+            xy_concat = self.augs(xy_concat)
 
             batch_size = tf.shape(x)[0]  # Last batch might be smaller
-            x = concat_xy[0:batch_size, ...]
+            x = xy_concat[0:batch_size, ...]
 
             # Unstack to match the output format of CellCentroidFormer
             y = {
-                "centroid_heatmap": concat_xy[batch_size:, ..., 0],
-                "cell_dimensions": concat_xy[batch_size:, ..., 1:],
+                "centroid_heatmap": xy_concat[batch_size:, ..., 0],
+                "cell_dimensions": xy_concat[batch_size:, ..., 1:],
             }
 
         return super().train_step((x, y))
