@@ -365,7 +365,6 @@ class CellCentroidFormer(models.Model):
 
             batch_size = tf.shape(x)[0]  # Last batch might be smaller
             x = concat_xy[0:batch_size, ...]
-            x = self.masking(x)
 
             # Unstack to match the output format of CellCentroidFormer
             y = {
