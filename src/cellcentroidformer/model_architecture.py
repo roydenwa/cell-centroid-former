@@ -373,6 +373,14 @@ class CellCentroidFormer(models.Model):
             }
 
         return super().train_step((x, y))
+    
+    def test_step(self, data):
+        x, y = data
+        y = {
+            "centroid_heatmap": y[0],
+            "cell_dimensions": y[1]
+        }
+        return super().test_step((x, y))
 
     def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
         x = self.backbone(x)
