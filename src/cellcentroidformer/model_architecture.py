@@ -376,10 +376,13 @@ class CellCentroidFormer(models.Model):
     
     def test_step(self, data):
         x, y = data
-        y = {
-            "centroid_heatmap": y[0],
-            "cell_dimensions": y[1]
-        }
+
+        if self.__class__ is CellCentroidFormer:
+            y = {
+                "centroid_heatmap": y[0],
+                "cell_dimensions": y[1]
+            }
+        
         return super().test_step((x, y))
 
     def call(self, x: tf.Tensor) -> Dict[str, tf.Tensor]:
