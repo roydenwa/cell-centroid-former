@@ -14,6 +14,11 @@ We represent cells by their centroid, their width, and their height.
 Our model contains two fully convolutional heads to predict these cell properties.
 The first head predicts a heatmap for cell centroids, and the second head predicts the cell dimensions (width and height) at the position of the corresponding cell centroid.
 
+## Self-supervised pre-training: Pseudo-colorize masked cells
+![Pre-training](assets/pseudo-colorize-masked-cells.png?raw=true "Pre-training")
+
+(a) Pseudo-colorization of fluorescence microscopy images and the corresponding colormaps. (b) Masking schemes and masked fluorescence microscopy images. MAE ([He et al., 2021](https://arxiv.org/abs/2111.06377)) masks cover 75% of images, whereas our proposed padded masks contain smaller patches and cover 33%. Image areas masked by our padded masking scheme are highlighted in white here to enhance their visibility. During pre-training, these areas are set to zero. (c) Proposed pre-training objective: Pseudo-colorize masked cells.
+
 ## Conference Paper
 > [**CellCentroidFormer: Combining Self-attention and Convolution for Cell Detection**](https://arxiv.org/abs/2206.00338),
 > Wagner, Royden and Rohr, Karl,
